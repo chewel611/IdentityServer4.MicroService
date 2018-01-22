@@ -3,3 +3,6 @@
 ################################################################################
 
 /.vs
+/IdentityServer4.MicroService/bin/Debug/netcoreapp2.0
+/IdentityServer4.MicroService/node_modules
+/IdentityServer4.MicroService/obj
