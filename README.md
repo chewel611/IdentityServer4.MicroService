@@ -10,3 +10,13 @@ IdentityServer4.MicroService是一个免费的，开放源代码的微服务框�
 * [ASP.NET Core](https://github.com/aspnet)
 * [Azure API Management](https://azure.microsoft.com/zh-cn/services/api-management/)
 * [Swagger Codegen](https://github.com/swagger-api/swagger-codegen)
+
+
+#### For run this project requires
+
+* Azure Key Valut (统一配置、加密证书保存等)
+* Azure Redis （缓存）
+* Azure SqlServer （持久还存储，用户、Client、ApiResources等）
+* Azure Storage （图片、二进制文件、队列）
+* Email & Message （Send Cloud）
+* Elastic Search （存储请求的日志）
