@@ -22,9 +22,9 @@ IdentityServer4.MicroService是一个免费开源的微服务框架。基于Iden
 
 #### For run this project requires
 
-* Azure Key Valut (统一配置、加密证书保存等)
+* Azure Key Valut (统一配置，将Appsetting的配置、SSL证书迁移到Azure Key Valut等)
 * Azure Redis （缓存）
-* Azure SqlServer （持久还存储，用户、Client、ApiResources等）
-* Azure Storage （图片、二进制文件、队列）
+* Azure SqlServer （持久存储，User、Client、ApiResource等数据）
+* Azure Storage （Table/Queue/Blob）
 * Email & Message （Send Cloud）
-* Elastic Search （存储请求的日志）
+* Elastic Search （请求日志）
