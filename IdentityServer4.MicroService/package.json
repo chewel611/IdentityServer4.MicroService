@@ -6,7 +6,7 @@
     "jquery-validation": "1.17.0",
     "jquery-validation-unobtrusive": "^3.2.6",
     "angular": "1.6.8",
-    "semantic-ui-css": "2.2.12"
+    "semantic-ui-css": "2.2.14"
   },
   "devDependencies": {
     "gulp": "^3.9.1",

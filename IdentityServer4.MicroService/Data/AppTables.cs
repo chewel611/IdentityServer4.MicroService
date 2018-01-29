@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using Microsoft.AspNetCore.Identity;
 
@@ -222,37 +224,65 @@ namespace IdentityServer4.MicroService
         }
 
         /// <summary>
-        /// 对应ClaimTypes.Scope
-        /// Client的Scope权限定义
-        /// 格式：resourceName.scopeName
-        /// 对应Identity的ClaimValue
+        /// Client权限定义
+        /// 对应Token中的claim的scope字段
+        /// 字段名：用去controller 的 action 标记
+        /// 字段值：策略的名称
+        /// 字段自定义属性：策略的权限集合，同时需要登记到IdentityServer的ApiResource中去
         /// </summary>
         public class ClientScopes
         {
-            public const string Create = "campaign.core.identity.create";
-            public const string Read = "campaign.core.identity.read";
-            public const string Update = "campaign.core.identity.update";
-            public const string Delete = "campaign.core.identity.delete";
-            public const string Approve = "campaign.core.identity.approve";
-            public const string Reject = "campaign.core.identity.reject";
-            public const string Upload = "campaign.core.identity.upload";
-            public const string All = "campaign.core.identity.all";
+            [PolicyClaimValues("create", "all")]
+            public const string Create = "scope:create";
+
+            [PolicyClaimValues("read", "all")]
+            public const string Read = "scope:read";
+
+            [PolicyClaimValues("update", "all")]
+            public const string Update = "scope:update";
+
+            [PolicyClaimValues("delete", "all")]
+            public const string Delete = "scope:delete";
+
+            [PolicyClaimValues("approve", "all")]
+            public const string Approve = "scope:approve";
+
+            [PolicyClaimValues("reject", "all")]
+            public const string Reject = "scope:reject";
+
+            [PolicyClaimValues("upload", "all")]
+            public const string Upload = "scope:upload";
         }
 
         /// <summary>
-        /// 对应ClaimTypes.Permission
-        /// User的Permission权限定义
+        /// User权限定义
+        /// 对应Token中的claim的permission字段
+        /// 字段名：用去controller 的 action 标记
+        /// 字段值：策略的名称
+        /// 字段自定义属性：策略的权限集合，可按需设置User表的claims的permission属性
         /// </summary>
         public class UserPermissions
         {
-            public const string Create = "create";
-            public const string Read = "read";
-            public const string Update = "update";
-            public const string Delete = "delete";
-            public const string Approve = "approve";
-            public const string Reject = "reject";
-            public const string Upload = "upload";
-            public const string All = "all";
+            [PolicyClaimValues("create", "all")]
+            public const string Create = "permission:create";
+
+            [PolicyClaimValues("read", "all")]
+            public const string Read = "permission:read";
+
+            [PolicyClaimValues("update", "all")]
+            public const string Update = "permission:update";
+
+            [PolicyClaimValues("delete", "all")]
+            public const string Delete = "permission:delete";
+
+            [PolicyClaimValues("approve", "all")]
+            public const string Approve = "permission:approve";
+
+            [PolicyClaimValues("reject", "all")]
+            public const string Reject = "permission:reject";
+
+            [PolicyClaimValues("upload", "all")]
+            public const string Upload = "permission:upload";
         }
 
         /// <summary>
@@ -403,6 +433,19 @@ namespace IdentityServer4.MicroService
             /// 
             /// </summary>
             public const string PortalUris = "Azure:ApiManagement:PortalUris";
+        }
+    }
+
+    [AttributeUsage(AttributeTargets.Field | AttributeTargets.Parameter, AllowMultiple = false)]
+    public class PolicyClaimValuesAttribute: Attribute
+    {
+        public string[] ClaimsValues { get; set; }
+
+        public PolicyClaimValuesAttribute() { }
+
+        public PolicyClaimValuesAttribute(params string[] ClaimsValues)
+        {
+            this.ClaimsValues = ClaimsValues;
         }
     }
 }

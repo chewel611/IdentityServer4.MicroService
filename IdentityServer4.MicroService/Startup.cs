@@ -51,9 +51,23 @@ namespace IdentityServer4.MicroService
 
             var config = builder.Build();
 
-            builder.AddAzureKeyVault($"https://{config["AzureKeyVault:Vault"]}.vault.azure.cn/",
-                config["AzureKeyVault:ClientId"],
-                config["AzureKeyVault:ClientSecret"]);
+            var AzureKeyVaultSection = config.GetSection("AzureKeyVault");
+
+            if (AzureKeyVaultSection.Exists())
+            {
+                var VaultBaseUrl = AzureKeyVaultSection["VaultBaseUrl"];
+
+                var VaultClientId = AzureKeyVaultSection["ClientId"];
+
+                var VaultClientSecret = AzureKeyVaultSection["ClientSecret"];
+
+                if (!string.IsNullOrWhiteSpace(VaultBaseUrl) &&
+                    !string.IsNullOrWhiteSpace(VaultClientId) &&
+                    !string.IsNullOrWhiteSpace(VaultClientSecret))
+                {
+                    builder.AddAzureKeyVault(VaultBaseUrl, VaultClientId, VaultClientSecret);
+                }
+            }
 
             Configuration = builder.Build();
         }
@@ -91,76 +105,93 @@ namespace IdentityServer4.MicroService
             #endregion
 
             var assemblyName = typeof(Startup).GetTypeInfo().Assembly.GetName().Name;
-
             var connSection = Configuration.GetSection("ConnectionStrings");
-
-            var connectionString = connSection["DBConnection"];
+            var DBConnection = connSection["DataBaseConnection"];
 
             #region DbContext
             // Add TenantDbContext.
             services.AddDbContext<TenantDbContext>(options =>
-                options.UseSqlServer(connectionString));
+                options.UseSqlServer(DBConnection));
 
             // Add ApplicationDbContext.
             services.AddDbContext<ApplicationDbContext>(options =>
-                options.UseSqlServer(connectionString));
+                options.UseSqlServer(DBConnection));
 
             services.AddIdentity<AppUser, AppRole>(opts =>
             {
                 opts.SignIn.RequireConfirmedEmail = true;
                 //opts.SignIn.RequireConfirmedPhoneNumber = true;
             })
-                .AddEntityFrameworkStores<ApplicationDbContext>()
-                .AddDefaultTokenProviders();
+            .AddEntityFrameworkStores<ApplicationDbContext>()
+            .AddDefaultTokenProviders();
+            services.Configure<ConnectionStrings>(connSection);
             #endregion
 
             #region 联合登陆
+            // https://github.com/aspnet/Security/issues/1576
             // https://docs.microsoft.com/zh-cn/aspnet/core/security/authentication/social/microsoft-logins
             // https://docs.microsoft.com/zh-cn/aspnet/core/security/authentication/social/facebook-logins
             // https://docs.microsoft.com/zh-cn/aspnet/core/security/authentication/social/google-logins
             // https://docs.microsoft.com/zh-cn/aspnet/core/security/authentication/social/twitter-logins
-            services.AddAuthentication(options => {
+            var authBuilder = services.AddAuthentication(options => {
                 options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
                 options.DefaultChallengeScheme = OpenIdConnectDefaults.AuthenticationScheme;
-            })
-            .AddWeixin(x=> {
-                x.ClientId = Configuration["Authentication:Weixin:ClientId"];
-                x.ClientSecret = Configuration["Authentication:Weixin:ClientSecret"];
-            })
-            .AddWeibo(x=> {
-                x.ClientId = Configuration["Authentication:Weibo:ClientId"];
-                x.ClientSecret = Configuration["Authentication:Weibo:ClientSecret"];
-            })
-            .AddGitHub(x=> {
-                x.ClientId = Configuration["Authentication:GitHub:ClientId"];
-                x.ClientSecret = Configuration["Authentication:GitHub:ClientSecret"];
-            })
-            .AddQQ(x=> {
-                x.ClientId = Configuration["Authentication:QQ:ClientId"];
-                x.ClientSecret = Configuration["Authentication:QQ:ClientSecret"];
-            })
-            .AddFacebook(x => {
-                x.AppId = Configuration["Authentication:Facebook:ClientId"];
-                x.AppSecret = Configuration["Authentication:Facebook:ClientSecret"];
-            })
-            .AddTwitter(x => {
-                x.ConsumerKey = Configuration["Authentication:Twitter:ClientId"];
-                x.ConsumerSecret = Configuration["Authentication:Twitter:ClientSecret"];
-            })
-            .AddGoogle(x => {
-                x.ClientId = Configuration["Authentication:Google:ClientId"];
-                x.ClientSecret = Configuration["Authentication:Google:ClientSecret"];
-            })
-            .AddMicrosoftAccount(x => {
-                x.ClientId = Configuration["Authentication:Microsoft:ClientId"];
-                x.ClientSecret = Configuration["Authentication:Microsoft:ClientSecret"];
-            })
-            .AddIdentityServerAuthentication(AppAuthenScheme, isAuth =>
-                {
-                    isAuth.Authority = "https://" + Configuration["IdentityServer"];
-                    isAuth.ApiName = assemblyName.ToLower();
-                    isAuth.RequireHttpsMetadata = true;
-                });
+            });
+
+            authBuilder.AddIdentityServerAuthentication(AppAuthenScheme, isAuth =>
+            {
+                isAuth.Authority = "https://" + Configuration["IdentityServer"];
+                isAuth.ApiName = assemblyName.ToLower();
+                isAuth.RequireHttpsMetadata = true;
+            });
+
+            //authBuilder.AddWeixin(x =>
+            //{
+            //    x.ClientId = Configuration["Authentication:Weixin:ClientId"];
+            //    x.ClientSecret = Configuration["Authentication:Weixin:ClientSecret"];
+            //});
+
+            //authBuilder.AddWeibo(x =>
+            //{
+            //    x.ClientId = Configuration["Authentication:Weibo:ClientId"];
+            //    x.ClientSecret = Configuration["Authentication:Weibo:ClientSecret"];
+            //});
+
+            //authBuilder.AddGitHub(x =>
+            //{
+            //    x.ClientId = Configuration["Authentication:GitHub:ClientId"];
+            //    x.ClientSecret = Configuration["Authentication:GitHub:ClientSecret"];
+            //});
+
+            //authBuilder.AddQQ(x =>
+            //{
+            //    x.ClientId = Configuration["Authentication:QQ:ClientId"];
+            //    x.ClientSecret = Configuration["Authentication:QQ:ClientSecret"];
+            //});
+
+            //authBuilder.AddFacebook(x =>
+            //{
+            //    x.AppId = Configuration["Authentication:Facebook:ClientId"];
+            //    x.AppSecret = Configuration["Authentication:Facebook:ClientSecret"];
+            //});
+
+            //authBuilder.AddTwitter(x =>
+            //{
+            //    x.ConsumerKey = Configuration["Authentication:Twitter:ClientId"];
+            //    x.ConsumerSecret = Configuration["Authentication:Twitter:ClientSecret"];
+            //});
+
+            //authBuilder.AddGoogle(x =>
+            //{
+            //    x.ClientId = Configuration["Authentication:Google:ClientId"];
+            //    x.ClientSecret = Configuration["Authentication:Google:ClientSecret"];
+            //});
+
+            //authBuilder.AddMicrosoftAccount(x =>
+            //{
+            //    x.ClientId = Configuration["Authentication:Microsoft:ClientId"];
+            //    x.ClientSecret = Configuration["Authentication:Microsoft:ClientSecret"];
+            //});
             #endregion
 
             // Common Cache Service, for now, no need
@@ -297,122 +328,114 @@ namespace IdentityServer4.MicroService
                 });
             #endregion
 
-            services.Configure<ConnectionStrings>(connSection);
+            #region MessageSender
             services.Configure<SmsSenderOptions>(Configuration.GetSection("MessageSender:sms"));
             services.Configure<EmailSenderOptions>(Configuration.GetSection("MessageSender:Email"));
-
-            // Add application services.
             services.AddTransient<IEmailSender, EmailSender>();
             services.AddTransient<ISmsSender, SmsSender>();
+            #endregion
+
             services.AddTransient(typeof(SqlService));
             services.AddTransient(typeof(AzureStorageService));
-            //services.AddTransient<AzureApiManagementServices>();
             services.AddSingleton<RedisService>();
             services.AddSingleton<TenantService>();
             services.AddSingleton<SwaggerCodeGenService>();
+            //services.AddTransient<AzureApiManagementServices>();
 
             #region 权限定义
             services.AddAuthorization(options =>
                 {
                     #region Client的权限策略
-                    options.AddPolicy(ClientScopes.Approve,
-                        policy => policy.RequireClaim(ClaimTypes.ClientScope,
-                        ClientScopes.Approve, ClientScopes.All));
+                    var scopes = typeof(ClientScopes).GetFields();
 
-                    options.AddPolicy(ClientScopes.Create,
-                        policy => policy.RequireClaim(ClaimTypes.ClientScope,
-                        ClientScopes.Create, ClientScopes.All));
+                    foreach (var scope in scopes)
+                    {
+                        var scopeName = scope.GetRawConstantValue().ToString();
 
-                    options.AddPolicy(ClientScopes.Delete,
-                        policy => policy.RequireClaim(ClaimTypes.ClientScope,
-                        ClientScopes.Delete, ClientScopes.All));
+                        var scopeValues = scope.GetCustomAttribute<PolicyClaimValuesAttribute>().ClaimsValues;
 
-                    options.AddPolicy(ClientScopes.Read,
-                        policy => policy.RequireClaim(ClaimTypes.ClientScope,
-                        ClientScopes.Read, ClientScopes.All));
-
-                    options.AddPolicy(ClientScopes.Reject,
-                        policy => policy.RequireClaim(ClaimTypes.ClientScope,
-                        ClientScopes.Reject, ClientScopes.All));
-
-                    options.AddPolicy(ClientScopes.Update,
-                        policy => policy.RequireClaim(ClaimTypes.ClientScope,
-                        ClientScopes.Update, ClientScopes.All));
-
-                    options.AddPolicy(ClientScopes.Upload,
-                       policy => policy.RequireClaim(ClaimTypes.ClientScope,
-                       ClientScopes.Upload, ClientScopes.All));
+                        options.AddPolicy(scopeName,policy => policy.RequireClaim(ClaimTypes.ClientScope, scopeValues));
+                    }
                     #endregion
 
                     #region User的权限策略
-                    options.AddPolicy(UserPermissions.Approve,
-                        policy => policy.RequireClaim(ClaimTypes.UserPermission,
-                        UserPermissions.Approve, UserPermissions.All));
+                    var permissions = typeof(UserPermissions).GetFields();
 
-                    options.AddPolicy(UserPermissions.Create,
-                        policy => policy.RequireClaim(ClaimTypes.UserPermission,
-                        UserPermissions.Create, UserPermissions.All));
+                    foreach (var permission in permissions)
+                    {
+                        var permissionName = permission.GetRawConstantValue().ToString();
 
-                    options.AddPolicy(UserPermissions.Delete,
-                        policy => policy.RequireClaim(ClaimTypes.UserPermission,
-                        UserPermissions.Delete, UserPermissions.All));
+                        var permissionValues = permission.GetCustomAttribute<PolicyClaimValuesAttribute>().ClaimsValues;
 
-                    options.AddPolicy(UserPermissions.Read,
-                        policy => policy.RequireClaim(ClaimTypes.UserPermission,
-                        UserPermissions.Read, UserPermissions.All));
-
-                    options.AddPolicy(UserPermissions.Reject,
-                        policy => policy.RequireClaim(ClaimTypes.UserPermission,
-                        UserPermissions.Reject, UserPermissions.All));
-
-                    options.AddPolicy(UserPermissions.Update,
-                        policy => policy.RequireClaim(ClaimTypes.UserPermission,
-                        UserPermissions.Update, UserPermissions.All));
-
-                    options.AddPolicy(UserPermissions.Upload,
-                       policy => policy.RequireClaim(ClaimTypes.UserPermission,
-                       UserPermissions.Upload, UserPermissions.All));
+                        options.AddPolicy(permissionName,
+                            policy => policy.RequireClaim(ClaimTypes.UserPermission, permissionValues));
+                    }
                     #endregion
                 });
             #endregion
 
             #region IdentityServer
-            // Adds IdentityServer
-            // Use Let's encryp Certificate
-            //var certPath = _env.WebRootPath + "\\campaigncore.pfx";
-            //var cert = new X509Certificate2(certPath, "www.jixiuapp.com",
-            //    X509KeyStorageFlags.MachineKeySet |
-            //    X509KeyStorageFlags.PersistKeySet |
-            //    X509KeyStorageFlags.Exportable);
-
             X509Certificate2 cert = null;
-            using (var kvClient = new KeyVaultClient(new KeyVaultClient.AuthenticationCallback(GetToken)))
+
+            var AzureKeyVaultSection = Configuration.GetSection("AzureKeyVault");
+
+            if (AzureKeyVaultSection.Exists())
             {
-                // 有公钥的证书
-                var CertificateWithPubKey = kvClient.GetCertificateAsync(
-                    $"https://{Configuration["AzureKeyVault:Vault"]}.vault.azure.cn",
-                    Configuration["AzureKeyVault:Certificate:Name"],
-                    Configuration["AzureKeyVault:Certificate:Version"]).Result;
+                var VaultBaseUrl = AzureKeyVaultSection["VaultBaseUrl"];
+                var certificateName = AzureKeyVaultSection["Certificate:Name"];
+                var certificateVersion = AzureKeyVaultSection["Certificate:Version"];
 
-                // 有私钥的证书
-                var CertificateWithPrivateKey = kvClient.GetSecretAsync(CertificateWithPubKey.SecretIdentifier.Identifier).Result;
+                if (!string.IsNullOrWhiteSpace(VaultBaseUrl) &&
+                    !string.IsNullOrWhiteSpace(certificateName) &&
+                    !string.IsNullOrWhiteSpace(certificateVersion))
+                {
+                    using (var kvClient = new KeyVaultClient(new KeyVaultClient.AuthenticationCallback(GetToken)))
+                    {
+                        // 有公钥的证书
+                        var CertificateWithPubKey = kvClient.GetCertificateAsync(VaultBaseUrl,
+                            certificateName, certificateVersion).Result;
 
-                // 默认用的是UserKeySet，但在Azure Web App里需要MachineKeySet
-                cert = new X509Certificate2(Convert.FromBase64String(CertificateWithPrivateKey.Value), 
-                    string.Empty, 
-                    X509KeyStorageFlags.MachineKeySet);
+                        // 有私钥的证书
+                        var CertificateWithPrivateKey = kvClient.GetSecretAsync(CertificateWithPubKey.SecretIdentifier.Identifier).Result;
+
+                        // 默认用的是UserKeySet，但在Azure Web App里需要MachineKeySet
+                        cert = new X509Certificate2(Convert.FromBase64String(CertificateWithPrivateKey.Value),
+                            string.Empty,
+                            X509KeyStorageFlags.MachineKeySet);
+                    }
+                }
+            }
+
+            if(cert==null)
+            {
+                var IdentityServerCertificateSection = Configuration.GetSection("IdentityServerCertificate");
+
+                if (IdentityServerCertificateSection.Exists())
+                {
+                    var certFilePath = IdentityServerCertificateSection["FilePath"];
+                    var certPassword = IdentityServerCertificateSection["CertPassword"];
+
+                    if (!string.IsNullOrWhiteSpace(certFilePath) && 
+                        !string.IsNullOrWhiteSpace(certPassword))
+                    {
+                        var certPath = _env.WebRootPath + "\\" + certFilePath;
+                        cert = new X509Certificate2(certPath, certPassword,
+                            X509KeyStorageFlags.MachineKeySet |
+                            X509KeyStorageFlags.PersistKeySet |
+                            X509KeyStorageFlags.Exportable);
+                    }
+                }
             }
 
             var IdentityServerStore = new Action<DbContextOptionsBuilder>(x =>
-            x.UseSqlServer(connectionString,
+            x.UseSqlServer(DBConnection,
             opts => opts.MigrationsAssembly(assemblyName)));
 
             services.AddIdentityServer(config =>
             {
                 // keep same Issuer for banlancer
-                config.IssuerUri = "https://www.ixingban.com";
-
-                // config.PublicOrigin = "https://openapis.ixingban.com/ids";
+                config.IssuerUri = "https://" + Configuration["IdentityServer"];
+                // config.PublicOrigin = "";
                 // config.Discovery.CustomEntries.Add("custom_endpoint", "~/api/custom");
             })
               .AddSigningCredential(cert)
@@ -424,7 +447,6 @@ namespace IdentityServer4.MicroService
             #endregion
 
             services.Configure<ApiTrackerSetting>(Configuration.GetSection("ApiTrackerSetting"));
-
             services.AddScoped<ApiTracker.ApiTracker>();
         }
 

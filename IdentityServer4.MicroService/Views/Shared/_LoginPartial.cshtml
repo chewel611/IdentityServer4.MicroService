@@ -1,7 +1,8 @@
 ﻿@using Microsoft.AspNetCore.Identity
 @inject SignInManager<AppUser> SignInManager
 @inject UserManager<AppUser> UserManager
-    <form id="logout2_form" name="" asp-area="" asp-controller="Account" asp-action="Logout2" method="post" style="display:flex">
+@inject IViewLocalizer Localizer
+<form id="logout2_form" name="" asp-area="" asp-controller="Account" asp-action="Logout2" method="post" style="display:flex">
     @if (SignInManager.IsSignedIn(User))
     {
         <a asp-area="" asp-controller="Manage" asp-action="Index" class="item" title="Manage">@UserManager.GetUserName(User)</a>
@@ -9,8 +10,8 @@
     }
     else
     {
-        <a asp-area="" asp-controller="Account" class="item" asp-action="Register">Register</a>
-        <a asp-area="" asp-controller="Account" class="item" asp-action="Login">Log in</a>
+        <a asp-area="" asp-controller="Account" class="item" asp-action="Register">@Localizer["注册"]</a>
+        <a asp-area="" asp-controller="Account" class="item" asp-action="Login">@Localizer["登录"]</a>
     }
 </form>
 @await Html.PartialAsync("_SelectLanguagePartial")
